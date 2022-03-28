@@ -10,26 +10,34 @@ msg_received = False
 def get_msg(var):
 	global msg_received
 	global point_arr
+	length = 0
 	msg_received = True
-	point_arr = var
+	point_arr = []
+	for i in var.points:
+		point_arr.append((i.x, i.y, i.z))
 
 def fit(points):
-	A = np.vstack([[2*points[0],2*points[1],2*points[2]], np.ones(len(points))]).T
+	B = []
+	A = []
+	for point in points:
+		B.append([point[0]**2 + point[1]**2 + point[2]**2])
+		
+		A.append([2*point[0], 2*point[1], 2*point[2], 1])
+	A = np.array(A)
+	B = np.array(B)
+	#print("1D B:", B)
+	dif = len(B)
+	B2 = B.reshape(dif,1)
+	#print("2D B:", B)
+	A2 = A.reshape(dif,4)
+	P = np.linalg.lstsq(A2, B2, rcond=None)
 	
-	B = np.array(points[0]**2 + points[1]**2 + points[2]**2).T
-	ATA = np.matmul(A.T, A)
-	ATB = np.matmul(A.T, B)
 	
-	P = np.matmul(np.linalg.inv(ATA), ATB)
-	x1 = P[0]
-	y1 = P[1]
-	z1 = P[2]
-	r1 = P[3]
-	
-	return (x1, y1, z1, r1)
+	return P
+
 
 def get_radius(P):
-	rad = sqrt(P[3] + P[1]**2 + P[2]**2 + P[0]**2)
+	rad = np.sqrt(P[0][3] + P[0][0]**2 + P[0][1]**2 + P[0][2]**2)
 	return rad
 	
 
@@ -37,13 +45,15 @@ def get_radius(P):
 if __name__ == '__main__':
 	#define the node, subscribers, and publishers
 	rospy.init_node('sphere_fit', anonymous=True)
+	#break it down into individual messages
 	sub = rospy.Subscriber('xyz_cropped_ball', XYZarray, get_msg)
-	pub = rospy.Publisher("robot_vision_lectures/Sphere_Params", SphereParams, queue_size=1)
+	pub = rospy.Publisher("/sphere_params", SphereParams, queue_size=1)
 	rate = rospy.Rate(10)
+	#param = SphereParams()
 	while not rospy.is_shutdown():
 		if msg_received:
 			P = fit(point_arr)
 			rad = get_radius(P)
-			pub.publish(P[0], P[1], P[2], rad)
-			#print("published")
+			param = SphereParams(float(P[0][0]), float(P[0][1]), float(P[0][2]), rad)
+			pub.publish(param)
 		rate.sleep()
