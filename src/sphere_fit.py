@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
 import rospy
-#I could not get them to import from the other nodes so i just replicated them
 from robot_vision_lectures.msg import XYZarray
 from robot_vision_lectures.msg import SphereParams
 
